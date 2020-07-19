@@ -6,19 +6,24 @@ private lateinit var EVERYONE: Array<String>
 private lateinit var EVERYONE_MAP: Map<String, Array<Int>>
 
 fun main(args: Array<String>) {
+    val filename: String
     var fileFound = true
+
     try {
-        if (args[0] != "--data" && !File(args[1]).isFile) fileFound = false
+        if (args[0] != "--data" || !File(args[1]).isFile) fileFound = false
     } catch (e: Exception) {
         fileFound = false
     }
-    if (fileFound) {
-        initialize(args[1])
-        menu()
-    } else {
+
+    filename = if (!fileFound) {
         print(if (args.isNotEmpty() && args.size == 2) "Loading ${args[1]} failed." else "No filename provided.")
-        println(" Please try again.\n")
-    }
+        println(" Loading default file names.txt for searching.\n")
+        "src/names.txt"
+    } else args[1]
+
+    initialize(filename)
+    menu()
+    println("\nBye!")
 }
 
 fun initialize(fileName: String) {
@@ -28,9 +33,7 @@ fun initialize(fileName: String) {
 
     File(fileName).forEachLine {
         muteLines.add(it)
-        var hold = it.trim()
-        while (hold.contains("  ")) hold = hold.replace("  ", " ")
-        val split = hold.toLowerCase().split(" ").toTypedArray()
+        val split = splitToArray(it)
         for (word in split) {
             if (muteMap.containsKey(word)) {
                 muteMap[word]?.add(count)
@@ -63,16 +66,71 @@ fun menu() {
 }
 
 fun find() {
-    val search = getString("\nEnter a name or email to search all suitable people.").toLowerCase().trim()
-    if (EVERYONE_MAP.containsKey(search)) {
-        println("${EVERYONE_MAP[search]?.size} persons found:")
-        EVERYONE_MAP[search]?.forEach { println(EVERYONE[it]) }
-    } else println("No matching people found.")
+    when (val criteria = getString("\nSelect a matching strategy: ALL, ANY, NONE").toLowerCase().trim()) {
+        "all", "any", "none" -> findCriteria(criteria)
+        else -> {
+            println("\nIncorrect option! Try again")
+            find()
+        }
+    }
+}
+
+fun findCriteria(criteria: String) {
+    var found = true
+    val search = splitToArray(getString("\nEnter a name or email to search all suitable people.").toLowerCase())
+    val indexes = mutableListOf<Int>()
+
+    for (word in search) {
+        if (EVERYONE_MAP.containsKey(word)) {
+            if (indexes.isEmpty()) EVERYONE_MAP[word]?.forEach { indexes.add(it) } else {
+                val tempList = EVERYONE_MAP[word]?.toList()
+                if (criteria == "all") {
+                    var done = false
+                    while (!done && indexes.isNotEmpty()) {
+                        for (num in indexes.indices) {
+                            if (!tempList!!.contains(indexes[num])) {
+                                indexes.removeAt(num)
+                                break
+                            }
+                        }
+                        done = true
+                    }
+                    if (indexes.isEmpty()) break
+                } else for (num in tempList!!) if (!indexes.contains(num)) indexes.add(num)
+            }
+        } else if (criteria == "all") {
+            found = false
+            break
+        }
+    }
+    if (indexes.isEmpty() && criteria != "none") found = false
+    if (found) printSome(indexes.toTypedArray(), criteria) else println("\nNo matching people found.")
+}
+
+fun printSome(indexes: Array<Int>, criteria: String) {
+    when (criteria) {
+        "all", "any" -> {
+            println("\n${indexes.size} persons found:")
+            for (num in indexes) println(EVERYONE[num])
+        }
+        "none" -> {
+            println("\n${EVERYONE.size - indexes.size} persons found:")
+            if (indexes.isEmpty()) EVERYONE.forEach { println(it) } else {
+                for (num in EVERYONE.indices) if (!indexes.contains(num)) println(EVERYONE[num])
+            }
+        }
+    }
 }
 
 fun printAll() {
     println("\n=== List of people ===")
     EVERYONE.forEach { println(it) }
+}
+
+fun splitToArray(words: String): Array<String> {
+    var hold = words.trim()
+    while (hold.contains("  ")) hold = hold.replace("  ", " ")
+    return hold.toLowerCase().split(" ").toTypedArray()
 }
 
 fun getNum(text: String, defaultMessage: Boolean = false): Int {
