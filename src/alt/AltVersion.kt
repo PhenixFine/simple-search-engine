@@ -1,8 +1,11 @@
 package alt
 
+import Criteria
+import utility.*
 import java.io.File
 
 private lateinit var EVERYONE: Array<String>
+private lateinit var CRITERIA: Criteria
 private lateinit var EVERYONE_MAP: Map<String, Array<Int>>
 
 fun main(args: Array<String>) {
@@ -26,7 +29,7 @@ fun main(args: Array<String>) {
     println("\nBye!")
 }
 
-fun initialize(fileName: String) {
+private fun initialize(fileName: String) {
     val muteMap = mutableMapOf<String, MutableList<Int>>()
     val muteLines = mutableListOf<String>()
     var count = 0
@@ -48,7 +51,7 @@ fun initialize(fileName: String) {
     EVERYONE = muteLines.toTypedArray()
 }
 
-fun menu() {
+private fun menu() {
     val menu = "=== Menu ===\n1. Find a person\n2. Print all people\n0. Exit"
     var read = getString(menu)
     val num = { read.toIntOrNull() ?: getNum(read, true) }
@@ -59,23 +62,27 @@ fun menu() {
             1 -> find()
             2 -> printAll()
             0 -> exit = true
-            else -> println("\nIncorrect option! Try again.")
+            else -> incorrectOption()
         }
         if (!exit) read = getString("\n$menu")
     }
 }
 
-fun find() {
-    when (val criteria = getString("\nSelect a matching strategy: ALL, ANY, NONE").toLowerCase().trim()) {
-        "all", "any", "none" -> findCriteria(criteria)
+private fun find() {
+    CRITERIA = when (getString("\nSelect a matching strategy: ALL, ANY, NONE").toLowerCase().trim()) {
+        "all" -> Criteria.ALL
+        "any" -> Criteria.ANY
+        "none" -> Criteria.NONE
         else -> {
-            println("\nIncorrect option! Try again")
+            incorrectOption()
             find()
+            return
         }
     }
+    findCriteria()
 }
 
-fun findCriteria(criteria: String) {
+private fun findCriteria() {
     var found = true
     val search = splitToArray(getString("\nEnter a name or email to search all suitable people.").toLowerCase())
     val indexes = mutableListOf<Int>()
@@ -84,7 +91,7 @@ fun findCriteria(criteria: String) {
         if (EVERYONE_MAP.containsKey(word)) {
             if (indexes.isEmpty()) EVERYONE_MAP[word]?.forEach { indexes.add(it) } else {
                 val tempList = EVERYONE_MAP[word]?.toList()
-                if (criteria == "all") {
+                if (CRITERIA == Criteria.ALL) {
                     var done = false
                     while (!done && indexes.isNotEmpty()) {
                         for (num in indexes.indices) {
@@ -98,57 +105,16 @@ fun findCriteria(criteria: String) {
                     if (indexes.isEmpty()) break
                 } else for (num in tempList!!) if (!indexes.contains(num)) indexes.add(num)
             }
-        } else if (criteria == "all") {
+        } else if (CRITERIA == Criteria.ALL) {
             found = false
             break
         }
     }
-    if (indexes.isEmpty() && criteria != "none") found = false
-    if (found) printSome(indexes.toTypedArray(), criteria) else println("\nNo matching people found.")
+    if (indexes.isEmpty() && CRITERIA != Criteria.NONE) found = false
+    if (found) CRITERIA.print(indexes.toTypedArray(), EVERYONE) else println("\nNo matching people found.")
 }
 
-fun printSome(indexes: Array<Int>, criteria: String) {
-    when (criteria) {
-        "all", "any" -> {
-            println("\n${indexes.size} persons found:")
-            for (num in indexes) println(EVERYONE[num])
-        }
-        "none" -> {
-            println("\n${EVERYONE.size - indexes.size} persons found:")
-            if (indexes.isEmpty()) EVERYONE.forEach { println(it) } else {
-                for (num in EVERYONE.indices) if (!indexes.contains(num)) println(EVERYONE[num])
-            }
-        }
-    }
-}
-
-fun printAll() {
+private fun printAll() {
     println("\n=== List of people ===")
     EVERYONE.forEach { println(it) }
 }
-
-fun splitToArray(words: String): Array<String> {
-    var hold = words.trim()
-    while (hold.contains("  ")) hold = hold.replace("  ", " ")
-    return hold.toLowerCase().split(" ").toTypedArray()
-}
-
-fun getNum(text: String, defaultMessage: Boolean = false): Int {
-    val strErrorNum = " was not a number, please try again: "
-    var num = text
-    var default = defaultMessage
-
-    do {
-        num = getString(if (default) num + strErrorNum else num)
-        if (!default) default = true
-    } while (!isNumber(num))
-
-    return num.toInt()
-}
-
-fun getString(text: String): String {
-    println(text)
-    return readLine()!!
-}
-
-fun isNumber(number: String) = number.toIntOrNull() != null
