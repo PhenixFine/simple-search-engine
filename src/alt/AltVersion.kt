@@ -118,3 +118,5 @@ private fun printAll() {
     println("\n=== List of people ===")
     EVERYONE.forEach { println(it) }
 }
+
+private fun incorrectOption() = println("\nIncorrect option! Please try again.")
