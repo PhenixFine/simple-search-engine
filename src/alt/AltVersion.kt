@@ -110,7 +110,7 @@ private fun findCriteria() {
             break
         }
     }
-    if (indexes.isEmpty() && CRITERIA != Criteria.NONE) found = false
+    if (found && indexes.isEmpty() && CRITERIA != Criteria.NONE) found = false
     if (found) CRITERIA.print(indexes.toTypedArray(), EVERYONE) else println("\nNo matching people found.")
 }
 
